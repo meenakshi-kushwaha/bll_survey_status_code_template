@@ -1,0 +1,92 @@
+---
+title: "BLL Survey Status"
+date: "`r Sys.Date()`"
+output:
+  word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+# load packages
+pacman::p_load(here,      # specify file directory
+               rio,       # import/export data
+               janitor,   # clean column names
+               flextable,
+               tidyverse  # data cleaning and manipulation
+)
+
+
+# read dataset
+df_raw <- import(here("data.csv")) %>% 
+  #remove_empty() %>%    # remove blank rows and columns
+  distinct()    %>%         # remove any duplicate rows  
+  clean_names() %>%          # standardize column names
+  drop_na(id_child) %>% 
+  mutate_if(is.character, ~na_if(., ''))
+
+```
+
+### Count by block
+```{r}
+df_status <- df_raw %>% 
+  select(block, district, bll_child_cat, bll_child)  %>% 
+ 
+  # replace BDL values with 2.3
+  # replace high (category 3) values with 65
+  
+  mutate(bll_child_num = case_when(
+  bll_child_cat == 2 ~ 2.3,   # substitute for BDL
+  bll_child_cat == 3 ~ 65,    # substitute threshold for >65
+  TRUE ~ bll_child
+)) %>% 
+  mutate(bll_5 = ifelse(bll_child_num >5, TRUE, FALSE),
+         bll_10 = ifelse(bll_child_num >10, TRUE, FALSE),
+         bll_20 = ifelse(bll_child_num >20, TRUE, FALSE),
+         bll_45 = ifelse(bll_child_num >45, TRUE, FALSE),
+         bdl = ifelse(bll_child_cat ==2, TRUE, FALSE),
+         bll_high = ifelse(bll_child_cat ==3, TRUE, FALSE)) 
+
+df_status %>% 
+  tabyl(block) %>% 
+  select(-percent) %>% 
+  flextable()
+```
+
+### Count and BLL by district
+```{r}
+
+# convert BDL values to 2.3 to calculate median 
+df_status %>% 
+  group_by(district) %>% 
+  summarise(n = n(),
+            min = min(bll_child_num, na.rm = TRUE),
+            max = max(bll_child_num, na.rm = TRUE),
+            median = median(bll_child_num, na.rm = TRUE),
+            pct5 = scales::percent(sum(bll_5, na.rm = TRUE)/n),
+            pct10 = scales::percent(sum(bll_10, na.rm = TRUE)/n),
+            pct20 = scales::percent(sum(bll_20, na.rm = TRUE)/n),
+            pct45 = scales::percent(sum(bll_45, na.rm = TRUE)/n), 
+            bdl = scales::percent(sum(bdl)/n),
+            high_bll = scales::percent (sum(bll_high)/n)) %>% 
+  flextable() %>%
+  set_header_labels(
+    district = "District",
+    n = "N",
+    min = "Minimum",
+    max = "Maximum",
+    median = "Median",
+    pct5 = "Pct >5",
+    pct10 = "Pct >10",
+    pct20 = "Pct >20",
+    pct45 = "Pct >45",
+    bdl = "Pct BDL",
+    high_bll = "Pct >65"
+  ) %>% 
+  add_footer_lines(
+  values =c( 
+    "Notes:",
+  "1) 'Pct >5' indicates the percentage of participants with a blood lead level (BLL) greater than 5 µg/dL. The same interpretation applies to the >10, >20, >45, and >65 thresholds.",
+  "2) BDL = Below Detection Limit"))
+```
+
