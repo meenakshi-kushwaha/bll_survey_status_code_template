@@ -1,6 +1,8 @@
 ## Input data
 
-The report requires a single CSV file named `data.csv`
+The report requires a single CSV file named `data.csv`. 
+To use this code with your own data, replace the demo `data.csv` file with your dataset. 
+If your dataset has a different filename, either rename it to `data.csv` or update the filename in `bll_survey_status.Rmd`.
 
 ## Required variables
 
@@ -28,9 +30,12 @@ For summary statistics, the report substitutes:
 ## Running the code in RStudio 
 Step 1: Open the project folder in RStudio.
 
-Step 2: Open bll_survey_status.Rmd.
+Step 2: Replace the demo `data.csv` file with your own dataset. 
+If your dataset has a different filename, either rename it to `data.csv` or update the filename in `bll_survey_status.Rmd`
 
-Step 3: Click Knit button on the top of the file 
+Step 3: Open bll_survey_status.Rmd.
+
+Step 4: Click Knit button on the top of the file 
 
 The report will be generated as `bll_survey_status.docx` and saved in the project folder.
 
