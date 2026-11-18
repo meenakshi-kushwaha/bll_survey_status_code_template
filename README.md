@@ -37,7 +37,8 @@ Step 3: Open bll_survey_status.Rmd.
 
 Step 4: Click Knit button on the top of the file 
 
-The report will be generated as `bll_survey_status.docx` and saved in the project folder.
+The report will be generated as `bll_survey_status.docx` and saved in the project folder. A high resolution copy of the 
+BLL distribution plot will also be saved as `bll_bar_chart.png` in the same folder. 
 
 For any questions, contact mkushwaha.consultant@vitalstrategies.org
 
