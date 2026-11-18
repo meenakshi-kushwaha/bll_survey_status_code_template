@@ -54,21 +54,44 @@ df_status %>%
 ```
 
 ### Count and BLL by district
-```{r}
 
-# convert BDL values to 2.3 to calculate median 
-df_status %>% 
-  group_by(district) %>% 
-  summarise(n = n(),
-            min = min(bll_child_num, na.rm = TRUE),
-            max = max(bll_child_num, na.rm = TRUE),
-            median = median(bll_child_num, na.rm = TRUE),
-            pct5 = scales::percent(sum(bll_5, na.rm = TRUE)/n),
-            pct10 = scales::percent(sum(bll_10, na.rm = TRUE)/n),
-            pct20 = scales::percent(sum(bll_20, na.rm = TRUE)/n),
-            pct45 = scales::percent(sum(bll_45, na.rm = TRUE)/n), 
-            bdl = scales::percent(sum(bdl)/n),
-            high_bll = scales::percent (sum(bll_high)/n)) %>% 
+```{r create-summary-function}
+# Summary function
+summarise_bll <- function(data) {
+  data %>%
+    summarise(
+      n = n(),
+      min = min(bll_child_num, na.rm = TRUE),
+      max = max(bll_child_num, na.rm = TRUE),
+      median = median(bll_child_num, na.rm = TRUE),
+      qntl_90 = round(quantile(bll_child_num, 0.9, na.rm = TRUE), 1),
+      qntl_95 = round(quantile(bll_child_num, 0.95, na.rm = TRUE), 1),
+      # pct5 = scales::percent(sum(bll_5, na.rm = TRUE) / n),
+      # pct10 = scales::percent(sum(bll_10, na.rm = TRUE) / n),
+      # pct20 = scales::percent(sum(bll_20, na.rm = TRUE) / n),
+      # pct45 = scales::percent(sum(bll_45, na.rm = TRUE) / n),
+      bdl = scales::percent(sum(bdl, na.rm = TRUE) / n),
+      high_bll = scales::percent(sum(bll_high, na.rm = TRUE) / n)
+    )
+}
+```
+
+```{r create-summary-tables}
+
+# Overall + district summaries
+df_summary <- bind_rows(
+  df_status %>%
+    summarise_bll() %>%
+    mutate(district = "Overall", .before = 1),
+
+  df_status %>%
+    group_by(district) %>%
+    summarise_bll() %>%
+    ungroup()
+)
+
+# Flextable
+df_summary %>%
   flextable() %>%
   set_header_labels(
     district = "District",
@@ -76,17 +99,68 @@ df_status %>%
     min = "Minimum",
     max = "Maximum",
     median = "Median",
-    pct5 = "Pct >5",
-    pct10 = "Pct >10",
-    pct20 = "Pct >20",
-    pct45 = "Pct >45",
+    qntl_90 = "90th percentile",
+    qntl_95 = "95th percentile",
     bdl = "Pct BDL",
     high_bll = "Pct >65"
-  ) %>% 
+  ) %>%
+  bold(i = 1, bold = TRUE, part = "body") %>%
   add_footer_lines(
-  values =c( 
-    "Notes:",
-  "1) 'Pct >5' indicates the percentage of participants with a blood lead level (BLL) greater than 5 µg/dL. The same interpretation applies to the >10, >20, >45, and >65 thresholds.",
-  "2) BDL = Below Detection Limit"))
+    values = c(
+      "Note:BDL = Below Detection Limit."
+    )
+  )
+```
+
+```{r bar-chart}
+df_status %>%
+  mutate(
+    bll_group = case_when(
+      bll_child_num < 5 ~ "<5",
+      bll_child_num < 10 ~ "5–9",
+      bll_child_num < 20 ~ "10–19",
+      bll_child_num <= 45 ~ "20–45",
+      bll_child_num > 45 ~ ">45"
+    ),
+    bll_group = factor(
+      bll_group,
+      levels = c("<5", "5–9", "10–19", "20–45", ">45")
+    )
+  ) %>%
+  count(bll_group) %>%
+  mutate(pct = n / sum(n)) %>%
+  ggplot(aes(x = bll_group, y = pct, fill = bll_group)) +
+  geom_col(width = 0.65) +
+  geom_text(aes(label = scales::percent(pct, accuracy = 1)),
+            hjust = -0.5,
+            size = 3) +
+  scale_y_continuous(labels=scales::percent_format(),
+                     limits = c(0, NA),
+  expand = expansion(mult = c(0, 0.15)))+
+  scale_fill_manual(
+    values = c(
+      "<5" = "#436aef",
+      "5–9" = "#f55858",
+      "10–19" = "#f55858",
+      "20–45" = "#f55858",
+      ">45" = "#f55858"
+    )
+  ) +
+  labs(
+    x = "Blood Lead Level (µg/dL)",
+    y = "Percentage of children",
+    title = "Distribution of Blood Lead Levels (BLL) Among Children",
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(face = "bold", size = 11),
+    axis.title = element_text(size = 10),
+    axis.text = element_text(size = 10, face = "bold")
+  ) +
+
+  coord_flip() 
+
+ggsave(here("bll_bar_chart.png"))
 ```
 
